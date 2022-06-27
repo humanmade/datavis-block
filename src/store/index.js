@@ -42,6 +42,8 @@ const actions = {
 	createDataset: ( dataset ) => async ( { dispatch } ) => {
 		const createdDataset = await api.createDataset( dataset );
 		dispatch( actions.setDataset( createdDataset ) );
+		dispatch( actions.getDatasets() );
+		return createdDataset;
 	},
 
 	/**
@@ -51,6 +53,7 @@ const actions = {
 	updateDataset: ( dataset ) => async ( { dispatch } ) => {
 		const updatedDataset = await api.updateDataset( dataset );
 		dispatch( actions.setDataset( updatedDataset ) );
+		return updatedDataset;
 	},
 
 	/**
@@ -63,6 +66,8 @@ const actions = {
 		if ( result ) {
 			dispatch( actions.removeDataset( dataset ) );
 		}
+
+		return { deleted: result };
 	},
 
 	/**
@@ -230,7 +235,14 @@ const selectors = {
 	 */
 	getDatasets: createSelector(
 		( state ) => state.datasets,
-		( datasets ) => Object.values( datasets ).filter( Boolean )
+		( datasets ) => Object.values( datasets )
+			.filter( Boolean )
+			.map( ( dataset ) => ( {
+				...dataset,
+				// Enable dataset list to be used as-is in <SelectControl>.
+				value: dataset.filename,
+				label: dataset.filename,
+			} ) )
 	),
 
 	/**

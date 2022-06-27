@@ -109,7 +109,7 @@ function infer_field_types( $data ) : array {
 	}
 
 	$fields = [];
-	foreach ( $data[0] as $field => $value ) {
+	foreach ( $data[0] ?? [] as $field => $value ) {
 		$field = [
 			'field' => $field,
 		];

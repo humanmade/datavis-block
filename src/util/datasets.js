@@ -61,7 +61,7 @@ export const getDatasetByUrl = ( url ) => {
  * @param {Dataset} dataset Dataset object.
  * @returns {Promise<Dataset>} Promise resolving to the created dataset object.
  */
-export const createDataset = ( { filename, content } ) => apiFetch( {
+export const createDataset = ( { filename, content = '' } ) => apiFetch( {
 	path: getPostDatasetsRoute(),
 	method: 'POST',
 	data: {
