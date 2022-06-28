@@ -32,13 +32,8 @@ function register_blocks() : void {
 	register_block_type(
 			'viewport-block/datavis-block',
 			[
-					'render_callback' => __NAMESPACE__ . '\\render_datavis_block',
-					'attributes' => [
-							'json' => [
-									'type'    => 'object',
-									'default' => [],
-							],
-					],
+					'render_callback' => __NAMESPACE__ . '\\render_viewport_block',
+					'attributes' => [],
 			]
 	);
 }
@@ -74,4 +69,8 @@ function render_datavis_block( array $attributes ) : string {
 	</div>
 	<?php
 	return (string) ob_get_clean();
+}
+
+function render_viewport_block( array $attributes, $content ) : string {
+	return $content;
 }

@@ -36,11 +36,11 @@ const viewportTabs = [
  * @returns {React.ReactNode} Rendered editorial UI.
  * @class
  */
-const EditViewportBlock = ({ attributes, setAttributes, isSelected } ) => {
+const EditViewportBlock = ( { attributes, setAttributes, isSelected } ) => {
 	const blockProps = useBlockProps();
 
 	const VIEWPORT_TEMPLATE = [
-		[ 'datavis-block/datavis-block' ],
+		[ 'datavis-block/datavis-block', { class: 'test' } ],
 		[ 'datavis-block/datavis-block' ],
 		[ 'datavis-block/datavis-block' ],
 	];
@@ -55,7 +55,7 @@ const EditViewportBlock = ({ attributes, setAttributes, isSelected } ) => {
 				{ ( activeTabViewport ) => {
 					switch ( activeTabViewport.name ) {
 						case 'desktop':
-							return null;
+							return ;
 						case 'tablet':
 							return null;
 						default:

@@ -3,6 +3,10 @@
  */
 import React from 'react';
 
+import {
+	InnerBlocks,
+} from '@wordpress/block-editor';
+
 import blockData from './block.json';
 import EditViewportBlock from './EditViewportBlock';
 
@@ -24,7 +28,10 @@ export const settings = {
 	 *
 	 * @returns {null} Empty so that server can complete rendering.
 	 */
-	save() {
-		return null;
+	save: ( { ...props } ) => {
+		const { attributes, innerBlocks } = props;
+		const { items } = attributes;
+
+		return <InnerBlocks.Content />;
 	},
 };

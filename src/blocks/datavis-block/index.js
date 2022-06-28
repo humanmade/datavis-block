@@ -5,6 +5,7 @@ import React from 'react';
 
 import blockData from './block.json';
 import EditDatavisBlock from './EditDatavisBlock';
+import SaveDatavisBlock from './SaveDatavisBlock';
 
 export const name = blockData.name;
 
@@ -24,7 +25,5 @@ export const settings = {
 	 *
 	 * @returns {null} Empty so that server can complete rendering.
 	 */
-	save() {
-		return null;
-	},
+	save: SaveDatavisBlock,
 };
