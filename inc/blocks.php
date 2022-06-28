@@ -28,6 +28,19 @@ function register_blocks() : void {
 			],
 		]
 	);
+
+	register_block_type(
+			'viewport-block/datavis-block',
+			[
+					'render_callback' => __NAMESPACE__ . '\\render_datavis_block',
+					'attributes' => [
+							'json' => [
+									'type'    => 'object',
+									'default' => [],
+							],
+					],
+			]
+	);
 }
 
 /**
