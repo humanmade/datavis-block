@@ -99,7 +99,7 @@ function render_datavis_block( array $attributes ) : string {
 		<?php endif; ?>
 	</style>
 	<div
-		class="<?php echo implode( ' ', $classes ); ?>"
+		class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
 		data-datavis="<?php echo esc_attr( $datavis ); ?>"
 		data-config="<?php echo esc_attr( $config ); ?>"
 	>
