@@ -1,6 +1,6 @@
 {
 	"apiVersion": 2,
-	"name": "viewport-block/datavis-block",
+	"name": "datavis-block/viewport-block",
 	"title": "Data Visualization",
 	"textdomain": "datavis-block",
 	"category": "widgets",

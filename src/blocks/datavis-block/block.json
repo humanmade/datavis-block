@@ -5,7 +5,7 @@
 	"textdomain": "datavis-block",
 	"category": "widgets",
 	"icon": "chart-line",
-	"parent": [ "viewport-block/datavis-block" ],
+	"parent": [ "datavis-block/viewport-block" ],
 	"usesContext": [ "datavis-block/currentViewport" ],
 	"attributes": {
 	  "blockId": {
