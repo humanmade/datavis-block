@@ -41,6 +41,7 @@ function render_datavis_block( array $attributes ) : string {
 	$json     = $attributes['json'] ?? false;
 	$maxWidth = $attributes['maxWidth'] ?? false;
 	$minWidth = $attributes['minWidth'] ?? false;
+	$viewport = $attributes['viewport'] ?? false;
 	$chart_id = uniqid( 'chart-' );
 
 	// Do not continue if we do not have a json string.
@@ -50,6 +51,14 @@ function render_datavis_block( array $attributes ) : string {
 
 	$datavis = sprintf( '%1$s-datavis', $chart_id );
 	$config   = sprintf( '%1$s-config', $chart_id );
+
+	$classes = [
+		'datavis-block',
+		$datavis,
+	];
+	if ( $viewport ) {
+		$classes[] = sprintf( 'datavis-%1$s', $viewport );
+	}
 
 	ob_start();
 	?>
@@ -81,7 +90,7 @@ function render_datavis_block( array $attributes ) : string {
 		<?php endif; ?>
 	</style>
 	<div
-		class="datavis-block <?php echo esc_attr( $datavis ); ?>"
+		class="<?php echo implode( ' ', $classes ); ?>"
 		data-datavis="<?php echo esc_attr( $datavis ); ?>"
 		data-config="<?php echo esc_attr( $config ); ?>"
 	>
