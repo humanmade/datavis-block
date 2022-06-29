@@ -9,3 +9,14 @@
 		box-shadow: inset 0 0 0 var(--wp-admin-border-width-focus) transparent, inset 0 -4px 0 0 var(--wp-admin-theme-color);
 	}
 }
+
+.block-editor-inner-blocks {
+
+  .hide-block {
+	display: none;
+  }
+
+  .vega-chart {
+	text-align: center;
+  }
+}

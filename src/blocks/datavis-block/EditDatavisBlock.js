@@ -1,6 +1,7 @@
 /**
  * Edit function for Datavis block.
  */
+import classNames from 'classnames';
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 
 import {
@@ -72,9 +73,15 @@ const markOptions = [
  * @param {object} props                 React component props.
  * @param {object} props.json            Vega Lite specification.
  * @param {Function} props.setAttributes Block editor setAttributes function.
+ * @param {object} props.attributes      Blocks attributes.
  * @returns {React.ReactNode} Rendered sidebar panel.
  */
-const SidebarEditor = ( { json, setAttributes } ) => {
+const SidebarEditor = ( { json, setAttributes, attributes } ) => {
+
+	const {
+		maxWidth,
+		minWidth,
+	} = attributes;
 
 	const [ data, setData ] = useState( [] );
 
@@ -237,6 +244,20 @@ const SidebarEditor = ( { json, setAttributes } ) => {
 					</>
 				) }
 			</PanelBody>
+			<PanelBody title={ __( 'Viewport', 'datavis' ) } >
+				<TextControl
+					label={ __( 'Max Width', 'datavis' ) }
+					value={ maxWidth }
+					onChange={ ( maxWidth ) => setAttributes( { maxWidth } ) }
+					help={ __( 'Max screen width for this chart. Empty is full width.', 'datavis' ) }
+				/>
+				<TextControl
+					label={ __( 'Min Width', 'datavis' ) }
+					value={ minWidth }
+					onChange={ ( minWidth ) => setAttributes( { minWidth } ) }
+					help={ __( 'Min screen width for this chart. Empty is full width.', 'datavis' ) }
+				/>
+			</PanelBody>
 		</InspectorControls>
 	);
 };
@@ -262,15 +283,20 @@ const tabs = [
  * @param {object}   props.attributes    The attributes for the selected block.
  * @param {Function} props.setAttributes The attributes setter for the selected block.
  * @param {boolean}  props.isSelected    Whether the block is selected in the editor.
+ * @param {object}   props.context        Context for the block.
  * @returns {React.ReactNode} Rendered editorial UI.
  * @class
  */
-const EditDatavisBlock = ( { attributes, setAttributes, isSelected } ) => {
-	const blockProps = useBlockProps();
-	const json = attributes.json || defaultSpecification;
+const EditDatavisBlock = ( { attributes, setAttributes, isSelected, context = {} } ) => {
+	const blockProps = useBlockProps(),
+		{ viewport } = attributes,
+		json = attributes.json || defaultSpecification;
 
 	return (
-		<div { ...blockProps }>
+		<div
+			{ ...blockProps }
+			className={ classNames( blockProps.className, { 'hide-block': ( context[ 'datavis-block/currentViewport' ] !== viewport ) } ) }
+		>
 			<VegaChart spec={ json } />
 			{ isSelected ? (
 				<>
@@ -299,7 +325,7 @@ const EditDatavisBlock = ( { attributes, setAttributes, isSelected } ) => {
 							return null;
 						} }
 					</TabPanel>
-					<SidebarEditor json={ json } setAttributes={ setAttributes } />
+					<SidebarEditor json={ json } setAttributes={ setAttributes } attributes={ attributes } />
 				</>
 			) : null }
 		</div>

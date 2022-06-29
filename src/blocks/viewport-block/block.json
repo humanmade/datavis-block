@@ -9,8 +9,12 @@
 	  "blockId": {
 		"type": "string"
 	  },
-	  "json": {
-		"type": "object"
+	  "currentViewport": {
+		"type": "string",
+		"default": "desktop"
 	  }
-	}
+	},
+  "providesContext": {
+	"datavis-block/currentViewport": "currentViewport"
+  }
 }

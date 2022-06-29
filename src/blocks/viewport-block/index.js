@@ -26,12 +26,9 @@ export const settings = {
 	/**
 	 * Return null on save so rendering can be done in PHP.
 	 *
-	 * @returns {null} Empty so that server can complete rendering.
+	 * @returns {React.ReactNode} Empty so that server can complete rendering.
 	 */
-	save: ( { ...props } ) => {
-		const { attributes, innerBlocks } = props;
-		const { items } = attributes;
-
+	save() {
 		return <InnerBlocks.Content />;
 	},
 };

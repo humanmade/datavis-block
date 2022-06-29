@@ -24,6 +24,11 @@ const viewportTabs = [
 		title: __( 'Tablet', 'datavis' ),
 		className: 'edit-post-sidebar__panel-tab',
 	},
+	{
+		name: 'mobile',
+		title: __( 'Mobile', 'datavis' ),
+		className: 'edit-post-sidebar__panel-tab',
+	},
 ];
 
 /**
@@ -40,9 +45,20 @@ const EditViewportBlock = ( { attributes, setAttributes, isSelected } ) => {
 	const blockProps = useBlockProps();
 
 	const VIEWPORT_TEMPLATE = [
-		[ 'datavis-block/datavis-block', { class: 'test' } ],
-		[ 'datavis-block/datavis-block' ],
-		[ 'datavis-block/datavis-block' ],
+		[ 'datavis-block/datavis-block', {
+			viewport: 'desktop',
+			minWidth: '768',
+		} ],
+		[ 'datavis-block/datavis-block', {
+			viewport: 'tablet',
+			maxWidth: '768',
+			minWidth: '601',
+		} ],
+		[ 'datavis-block/datavis-block', {
+			viewport: 'mobile',
+			maxWidth: '600',
+			minWidth: '0',
+		} ],
 	];
 
 	return (
@@ -51,12 +67,17 @@ const EditViewportBlock = ( { attributes, setAttributes, isSelected } ) => {
 				className="datavis-block-tabs"
 				activeClass="active-tab-viewport"
 				tabs={ viewportTabs }
+				onSelect={ ( activeTabViewport ) => {
+					setAttributes( { currentViewport: activeTabViewport } );
+				} }
 			>
 				{ ( activeTabViewport ) => {
 					switch ( activeTabViewport.name ) {
 						case 'desktop':
-							return ;
+							return null;
 						case 'tablet':
+							return null;
+						case 'mobile':
 							return null;
 						default:
 							return null;

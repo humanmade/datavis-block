@@ -5,13 +5,23 @@
 	"textdomain": "datavis-block",
 	"category": "widgets",
 	"icon": "chart-line",
-  	"parent": [ "viewport-block/datavis-block" ],
+	"parent": [ "viewport-block/datavis-block" ],
+	"usesContext": [ "datavis-block/currentViewport" ],
 	"attributes": {
 	  "blockId": {
 		"type": "string"
 	  },
 	  "json": {
 		"type": "object"
+	  },
+	  "viewport": {
+		"type": "string"
+	  },
+	  "maxWidth": {
+		"type": "string"
+	  },
+	  "minWidth": {
+		"type": "string"
 	  }
 	}
 }

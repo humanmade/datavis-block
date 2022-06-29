@@ -28,14 +28,6 @@ function register_blocks() : void {
 			],
 		]
 	);
-
-	register_block_type(
-			'viewport-block/datavis-block',
-			[
-					'render_callback' => __NAMESPACE__ . '\\render_viewport_block',
-					'attributes' => [],
-			]
-	);
 }
 
 /**
@@ -47,6 +39,8 @@ function register_blocks() : void {
  */
 function render_datavis_block( array $attributes ) : string {
 	$json     = $attributes['json'] ?? false;
+	$maxWidth = $attributes['maxWidth'] ?? false;
+	$minWidth = $attributes['minWidth'] ?? false;
 	$chart_id = uniqid( 'chart-' );
 
 	// Do not continue if we do not have a json string.
@@ -59,8 +53,35 @@ function render_datavis_block( array $attributes ) : string {
 
 	ob_start();
 	?>
+	<style>
+		<?php if ( ! empty( $maxWidth ) || ! empty( $minWidth ) ) : ?>
+			.<?php echo esc_html( $datavis ) ?> {
+				display: none;
+			}
+		<?php endif; ?>
+
+		<?php if ( ! empty( $maxWidth ) && ! empty( $minWidth ) ) : ?>
+			@media screen and (max-width: <?php echo esc_attr( $maxWidth ); ?>px) and (min-width: <?php echo esc_attr( $minWidth ); ?>px) {
+				.<?php echo esc_html( $datavis ) ?> {
+					display: block;
+				}
+			}
+		<?php elseif ( ! empty( $maxWidth ) ) : ?>
+			@media screen and (max-width: <?php echo esc_attr( $maxWidth ); ?>px) {
+				.<?php echo esc_html( $datavis ) ?> {
+					display: block;
+				}
+			}
+		<?php elseif ( ! empty( $minWidth ) ) : ?>
+			@media screen and (min-width: <?php echo esc_attr( $minWidth ); ?>px) {
+				.<?php echo esc_html( $datavis ) ?> {
+					display: block;
+				}
+			}
+		<?php endif; ?>
+	</style>
 	<div
-		class="datavis-block"
+		class="datavis-block <?php echo esc_attr( $datavis ); ?>"
 		data-datavis="<?php echo esc_attr( $datavis ); ?>"
 		data-config="<?php echo esc_attr( $config ); ?>"
 	>
@@ -69,8 +90,4 @@ function render_datavis_block( array $attributes ) : string {
 	</div>
 	<?php
 	return (string) ob_get_clean();
-}
-
-function render_viewport_block( array $attributes, $content ) : string {
-	return $content;
 }
