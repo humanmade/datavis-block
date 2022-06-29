@@ -1,8 +1,6 @@
 /**
  * Implement Datavis block.
  */
-import React from 'react';
-
 import blockData from './block.json';
 import EditDatavisBlock from './EditDatavisBlock';
 

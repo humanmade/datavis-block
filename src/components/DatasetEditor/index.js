@@ -1,20 +1,19 @@
-/* eslint-disable no-console */
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 
-// eslint-disable-next-line
 import { Icon, TextControl, Button, PanelRow, SelectControl, TextareaControl } from '@wordpress/components';
-import { useSelect } from '@wordpress/data';
+import { useSelect, useDispatch } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 
-// eslint-disable-next-line
-import { createDataset, deleteDataset, getDataset, getDatasets, updateDataset } from '../../util/datasets';
-
+import { getSelectedDatasetFromSpec } from '../../util/spec';
 import './dataset-editor.scss';
 import FileDropZone from '../FileDropZone';
 
 const INLINE = 'inline';
 
-const defaultDatasets = [];
+const inlineDataOption = {
+	label: __( 'Inline data', 'datavis' ),
+	value: INLINE,
+};
 
 /** No-op function for use as argument default. */
 const noop = () => {};
@@ -24,67 +23,59 @@ const noop = () => {};
  *
  * @param {object}   props          React component props.
  * @param {string}   props.filename Filename of CSV being edited.
- * @param {number}   props.postId   ID of post being edited.
  * @param {Function} props.onSave   Callback to run when CSV changes.
  * @returns {React.ReactNode} Rendered react UI.
  */
-const CSVEditor = ( { filename, postId, onSave = noop } ) => {
-	const [ dataset, setDataset ] = useState( { filename } );
-	// const [ csvContent, setCsvContent ] = useState( '' );
+const CSVEditor = ( { filename, onSave = noop } ) => {
+	// The balance between redux store data and local state data is tricky.
+	// Test with caution when editing this component.
+	const dataset = useSelect( ( select ) => select( 'csv-datasets' ).getDataset( filename ) );
+	const { updateDataset } = useDispatch( 'csv-datasets' );
+	const [ content, setCsvContent ] = useState( dataset?.content !== undefined ? dataset.content : 'loading' );
 
 	useEffect( () => {
-		if ( filename !== INLINE && ! dataset?.content ) {
-			console.log( 'REQUESTING' );
-			getDataset( postId, filename ).then( ( datasetResponse ) => {
-				if ( datasetResponse.content ) {
-					setDataset( datasetResponse );
-				}
-			} );
+		// If content has loaded, update the store value.
+		if ( content === 'loading' && filename !== INLINE && dataset.content !== undefined ) {
+			setCsvContent( dataset.content );
 		}
-	}, [ dataset, postId, filename, setDataset ] );
+	}, [ filename, dataset, content, setCsvContent ] );
 
-	const onChange = useCallback( ( content ) => {
-		if ( content !== dataset?.content ) {
-			setDataset( {
-				...dataset,
-				content,
-			} );
-		}
-	}, [ dataset, setDataset ] );
+	const onDrop = useCallback( ( { content } ) => {
+		setCsvContent( content );
+	}, [] );
 
 	const onSaveButton = useCallback( () => {
-		if ( dataset?.content && dataset?.filename ) {
-			updateDataset.throttled( dataset, { id: postId } ).then( onSave );
+		if ( filename ) {
+			updateDataset( {
+				filename,
+				content: content,
+			} ).then( onSave );
 		}
-	}, [ dataset, postId, onSave ] );
+	}, [ filename, content, updateDataset, onSave ] );
+
+	if ( filename === INLINE ) {
+		return (
+			<p>{ __( 'Edit data values as JSON in the Chart Specification tab.', 'datavis' ) }</p>
+		);
+	}
 
 	return (
 		<FileDropZone
 			message={ __( 'Drop CSV to load data', 'datavis' ) }
-			onDrop={ ( { content } ) => onChange( content ) }
+			onDrop={ onDrop }
 		>
 			<TextareaControl
 				label={ __( 'Edit CSV dataset', 'datavis' ) }
-				value={ dataset?.content || '' }
-				onChange={ onChange }
+				value={ content || '' }
+				onChange={ setCsvContent }
+				rows="10"
 			/>
-			<Button className="is-primary" onClick={ onSaveButton }>{ __( 'Save', 'datavis' ) }</Button>
+			<Button className="is-primary" onClick={ onSaveButton }>
+				{ __( 'Save dataset', 'datavis' ) }
+			</Button>
 		</FileDropZone>
 	);
 };
-
-/**
- * Sanitize a string for use as a filename.
- *
- * @param {string} str Input string.
- * @returns {string} kebab-case string.
- */
-const toLowerKebabCase = ( str ) => str
-	.trim()
-	.toLowerCase()
-	.split( /[^A-Za-z0-9_]+/ )
-	.filter( Boolean )
-	.join( '-' );
 
 /**
  * Render a New Dataset form.
@@ -95,10 +86,8 @@ const toLowerKebabCase = ( str ) => str
  */
 const NewDatasetForm = ( { onAddDataset } ) => {
 	const [ filename, setFilename ] = useState( '' );
-	const { postId } = useSelect( ( select ) => ( {
-		postId: select( 'core/editor' ).getEditedPostAttribute( 'id' ),
-	} ) );
 	const [ hasFormError, setHasFormError ] = useState( false );
+	const { createDataset } = useDispatch( 'csv-datasets' );
 
 	const onChangeContent = useCallback( ( content ) => {
 		setFilename( content );
@@ -106,16 +95,12 @@ const NewDatasetForm = ( { onAddDataset } ) => {
 	}, [ setFilename, setHasFormError ] );
 
 	const onSubmit = useCallback( () => {
-		if ( ! filename.trim() || ! postId ) {
+		if ( ! filename.trim() ) {
 			setHasFormError( true );
 			return;
 		}
-		const dataset = {
-			filename: `${ toLowerKebabCase( filename.replace( /\.csv$/i, '' ) ) }.csv`,
-			content: '',
-		};
-		createDataset( dataset, { id: postId } ).then( onAddDataset );
-	}, [ filename, postId, onAddDataset ] );
+		createDataset( { filename } ).then( onAddDataset );
+	}, [ filename, createDataset, onAddDataset ] );
 
 	const submitOnEnter = useCallback( ( evt ) => {
 		if ( evt.code === 'Enter' ) {
@@ -145,6 +130,92 @@ const NewDatasetForm = ( { onAddDataset } ) => {
 };
 
 /**
+ * Transform a Vega Lite spec to set a new data source.
+ *
+ * @param {object} json Vega Lite spec object.
+ * @param {string} datasetUrl URL of a remote dataset.
+ * @returns {object} Transformed vega spec (new object reference).
+ */
+const setSpecDataset = ( json, datasetUrl ) => {
+	if ( datasetUrl && datasetUrl !== INLINE ) {
+		json.data = { url: datasetUrl };
+	} else {
+		// No URL. Switch to inline data.
+		if ( json.data?.url ) {
+			// Wipe out any URL property to set back to inline mode.
+			json.data = [];
+		}
+	}
+	return { ...json };
+};
+
+/**
+ * Render the Data Editor selector.
+ *
+ * This component doesn't use local state: all changes are persisted directly to
+ * the Vega Lite JSON spec being edited.
+ *
+ * @param {object} props               React component props.
+ * @param {object} props.json          Vega spec being edited.
+ * @param {object} props.setAttributes Block editor setAttributes method.
+ * @returns {React.ReactNode} Rendered form.
+ */
+const SelectDataset = ( { json, setAttributes } ) => {
+	const datasets = useSelect( ( select ) => select( 'csv-datasets' ).getDatasets() );
+	const selectedDataset = getSelectedDatasetFromSpec( datasets, json, inlineDataOption );
+	const options = useMemo( () => [ inlineDataOption ].concat( datasets ), [ datasets ] );
+
+	const onChangeSelected = useCallback( ( filename ) => {
+		const selectedDataset = options.find( ( { value } ) => value === filename );
+		const updatedSpec = setSpecDataset( json, selectedDataset?.url || INLINE );
+		setAttributes( { json: updatedSpec } );
+	}, [ options, json, setAttributes ] );
+
+	return (
+		<SelectControl
+			label={ __( 'Datasets', 'datavis' ) }
+			value={ selectedDataset?.value }
+			options={ options }
+			onChange={ onChangeSelected }
+		/>
+	);
+};
+
+/**
+ * Render the Delete Dataset button.
+ *
+ * @param {object}   props               React component props.
+ * @param {string}   props.filename          Vega spec being edited.
+ * @param {Function} props.onDelete Callback which gets passed the  Block editor setAttributes method.
+ * @returns {React.ReactNode} Rendered form.
+ */
+const DeleteDataset = ( { filename, onDelete = noop } ) => {
+	const { deleteDataset } = useDispatch( 'csv-datasets' );
+	const onDeleteDataset = useCallback( () => {
+		deleteDataset( { filename } ).then( () => {
+			onDelete( filename );
+		} );
+	}, [ deleteDataset, filename, onDelete ] );
+
+	if ( filename === INLINE ) {
+		// Cannot delete inline dataset.
+		return null;
+	}
+
+	return (
+		<Button
+			className="dataset-control-button is-tertiary is-destructive"
+			onClick={ onDeleteDataset }
+		>
+			<Icon icon="trash" />
+			<span className="screen-reader-text">
+				{ __( 'Delete dataset', 'datavis' ) }
+			</span>
+		</Button>
+	);
+};
+
+/**
  * Render the Data Editor form.
  *
  * @param {object} props               React component props.
@@ -153,125 +224,66 @@ const NewDatasetForm = ( { onAddDataset } ) => {
  * @returns {React.ReactNode} Rendered form.
  */
 const DatasetEditor = ( { json, setAttributes } ) => {
-	const [ datasets, setDatasets ] = useState( defaultDatasets );
-	const [ selectedDataset, setSelectedDataset ] = useState( INLINE );
+	/** @type {Dataset[]} */
+	const datasets = useSelect( ( select ) => select( 'csv-datasets' ).getDatasets() );
+	const selectedDataset = getSelectedDatasetFromSpec( datasets, json, inlineDataOption );
 	const [ isAddingNewDataset, setIsAddingNewDataset ] = useState( false );
 
-	const { postId } = useSelect( ( select ) => ( {
-		postId: select( 'core/editor' ).getEditedPostAttribute( 'id' ),
-	} ) );
+	const onAddDataset = useCallback( ( newDataset ) => {
+		const updatedSpec = setSpecDataset( json, newDataset?.url || INLINE );
+		setAttributes( { json: updatedSpec } );
+		setIsAddingNewDataset( false );
+	}, [ json, setAttributes ] );
 
-	const updateDatasets = useCallback( () => {
-		getDatasets( { id: postId } ).then( ( datasetList ) => {
-			setDatasets( datasetList );
-			if ( json?.data?.url ) {
-				const activeDataset = datasetList.find( ( { url } ) => url === json.data.url );
-				if ( activeDataset ) {
-					setSelectedDataset( activeDataset.filename );
-				}
+	const onDeleteDataset = useCallback( ( deletedFile ) => {
+		// Having selection return to INLINE on delete feels confusing in the
+		// limited testing we have done, so select the item prior to the
+		// removed dataset, or the last dataset if there is only one left.
+		// selectedDataset and datasets will not yet be updated to reflect
+		// the deletion at the time this callback fires.
+		if ( selectedDataset?.filename === deletedFile && datasets.length > 1 ) {
+			// Datasets array does not include inlineDataOption.
+			const indexOfDeleted = datasets.indexOf( selectedDataset );
+			let indexToSelect = indexOfDeleted - 1;
+			if ( indexToSelect < 0 && datasets.length > 1 ) {
+				indexToSelect = indexOfDeleted + 1;
 			}
-		} );
-	}, [ postId, json?.data?.url ] );
-
-	useEffect( () => {
-		if ( datasets === defaultDatasets ) {
-			updateDatasets();
+			const updatedSpec = setSpecDataset( json, datasets[indexToSelect]?.url || INLINE );
+			setAttributes( { json: updatedSpec } );
 		}
-	}, [ datasets, updateDatasets ] );
-
-	const options = useMemo( () => {
-		return [ {
-			label: __( 'Inline data', 'datavis' ),
-			value: INLINE,
-		} ].concat( datasets.map( ( dataset ) => ( {
-			label: dataset.filename,
-			value: dataset.filename,
-		} ) ) ).filter( Boolean );
-	}, [ datasets ] );
-
-	// TODO: When content is empty, switching from another dataset does not refresh the text area.
-
-	const onChangeSelected = useCallback( ( selected ) => {
-		setSelectedDataset( selected );
-		const selectedDatasetObj = datasets.find( ( dataset ) => dataset.filename === selected );
-		if ( selected === INLINE || ! selectedDatasetObj || ! selectedDatasetObj.url ) {
-			if ( json.data?.url ) {
-				// Wipe out any URL property to set back to inline mode.
-				json.data = [];
-				setAttributes( { json: { ...json } } );
-			}
-			return;
-		}
-
-		json.data = { url: selectedDatasetObj.url };
-		setAttributes( { json: { ...json } } );
-	}, [ datasets, json, setAttributes ] );
+	}, [ datasets, selectedDataset, json, setAttributes ] );
 
 	const forceChartUpdate = useCallback( () => {
+		// Set `json` to a new object reference to trigger a re-render.
 		setAttributes( {
 			json: { ...json },
 		} );
 	}, [ json, setAttributes ] );
 
-	const onAddNewDataset = useCallback( ( result ) => {
-		setIsAddingNewDataset( false );
-		if ( result && result.filename ) {
-			updateDatasets();
-			setSelectedDataset( result.filename );
-		}
-	}, [ setIsAddingNewDataset, updateDatasets, setSelectedDataset ] );
-
-	const onDeleteDataset = useCallback( () => {
-		if ( selectedDataset !== INLINE ) {
-			deleteDataset( {
-				filename: selectedDataset,
-			}, { id: postId } ).then( updateDatasets );
-		}
-		setSelectedDataset( INLINE );
-	}, [ selectedDataset, updateDatasets, setSelectedDataset, postId ] );
-
 	return (
 		<div>
 			{ isAddingNewDataset ? (
-				<NewDatasetForm onAddDataset={ onAddNewDataset } />
+				<NewDatasetForm onAddDataset={ onAddDataset } />
 			) : (
-				<PanelRow className="datasets-control-row">
-					<SelectControl
-						label={ __( 'Datasets', 'datavis' ) }
-						value={ selectedDataset }
-						options={ options }
-						onChange={ onChangeSelected }
-					/>
-					{ selectedDataset !== INLINE ? (
+				<>
+					<PanelRow className="datasets-control-row">
+						<SelectDataset json={ json } setAttributes={ setAttributes } />
+						<DeleteDataset
+							filename={ getSelectedDatasetFromSpec( datasets, json )?.filename || INLINE }
+							onDelete={ onDeleteDataset }
+						/>
 						<Button
-							className="dataset-control-button is-tertiary is-destructive"
-							onClick={ onDeleteDataset }
+							className="dataset-control-button is-primary"
+							onClick={ () => setIsAddingNewDataset( true ) }
 						>
-							<Icon icon="trash" />
-							<span className="screen-reader-text">
-								{ __( 'Delete dataset', 'datavis' ) }
-							</span>
+							{ __( 'New dataset', 'datavis' ) }
 						</Button>
-					) : null }
-					<Button
-						className="dataset-control-button is-primary"
-						onClick={ () => setIsAddingNewDataset( true ) }
-					>
-						{ __( 'New dataset', 'datavis' ) }
-					</Button>
-				</PanelRow>
-			) }
-
-			{ isAddingNewDataset ? null : (
-				selectedDataset !== INLINE ? (
+					</PanelRow>
 					<CSVEditor
-						postId={ postId }
-						filename={ selectedDataset }
+						filename={ selectedDataset?.filename || INLINE }
 						onSave={ forceChartUpdate }
 					/>
-				) : (
-					<p>{ __( 'Edit data values as JSON in the Chart Specification tab.', 'datavis' ) }</p>
-				)
+				</>
 			) }
 		</div>
 	);

@@ -103,6 +103,12 @@ function register_dataset_routes() : void {
 							'default'     => 'csv',
 							'required'    => false,
 						],
+						'data_limit' => [
+							'description' => __( 'Cap the number of rows returned in the JSON data property.' ),
+							'type'        => 'integer',
+							'minimum'     => 1,
+							'required'    => false,
+						],
 					],
 				],
 				[
@@ -150,6 +156,27 @@ function get_post( $post_id ) {
 }
 
 /**
+ * Compute generated properties for datasets before fulfilling the request.
+ *
+ * @param array           $dataset Dataset array
+ * @param WP_REST_Request $request Full details about the request.
+ * @return array Array of computed dataset properties (includes original filename).
+ */
+function get_computed_dataset_properties( array $dataset, WP_REST_Request $request ) : array {
+	$rest_route_url = untrailingslashit( $request->get_route() );
+	// Handle requests to both /datasets/ and /datasets/:filename.
+	if ( substr( $rest_route_url, -9 ) === '/datasets' ) {
+		$rest_route_url = $rest_route_url . '/' . $dataset['filename'];
+	}
+	return [
+		'filename' => $dataset['filename'],
+		'url'      => get_rest_url( null, $rest_route_url ),
+		'rows'     => count( explode( "\n", $dataset['content'] ) ) - 1,
+		'fields'   => Datasets\infer_field_types( $dataset['content'] ),
+	];
+}
+
+/**
  * Serve a list of available datasets.
  *
  * @param WP_REST_Request $request Full details about the request.
@@ -173,11 +200,7 @@ function get_datasets( WP_REST_Request $request ) {
 		array_map(
 			function( $dataset ) use ( $request ) : array {
 				// Return a no-content version of the dataset.
-				return [
-					'filename'  => $dataset['filename'],
-					'url' => get_rest_url( null, trailingslashit( $request->get_route() ) . $dataset['filename'] ),
-					'rows' => count( explode( "\n", $dataset['content'] ) ) - 1,
-				];
+				return get_computed_dataset_properties( $dataset, $request );
 			},
 			$datasets
 		)
@@ -210,8 +233,10 @@ function update_dataset_item( WP_REST_Request $request ) {
 		return $error;
 	}
 
-	// Respond with the object as it was saved.
-	return rest_ensure_response( Metadata\get_dataset( $post_id, $request['filename'] ) );
+	// Respond with the object as it was saved, plus computed properties.
+	$saved_dataset = Metadata\get_dataset( $post_id, $request['filename'] );
+	$saved_dataset = array_merge( get_computed_dataset_properties( $saved_dataset, $request ), $saved_dataset );
+	return rest_ensure_response( $saved_dataset );
 }
 
 /**
@@ -238,6 +263,12 @@ function get_dataset_item( WP_REST_Request $request ) {
 
 	if ( $request['filename'] !== $dataset['filename'] || empty( $dataset ) ) {
 		return $error;
+	}
+
+	$dataset = array_merge( get_computed_dataset_properties( $dataset, $request ), $dataset );
+
+	if ( $request['format'] === 'json' ) {
+		$dataset['data'] = Datasets\csv_to_json( $dataset['content'], $request['data_limit'] );
 	}
 
 	return rest_ensure_response( $dataset );
@@ -280,7 +311,7 @@ function delete_dataset_item( WP_REST_Request $request ) {
  * @return true
  */
 function deliver_dataset_as_csv( $served, $result, $request, $server ) {
-	if ( strpos( $request->get_route(), '/datasets/' ) === false || $request->get_method() !== 'GET' ) {
+	if ( $request['format'] !== 'csv' || strpos( $request->get_route(), '/datasets/' ) === false || $request->get_method() !== 'GET' ) {
 		return $served;
 	}
 
@@ -290,14 +321,6 @@ function deliver_dataset_as_csv( $served, $result, $request, $server ) {
 		// This may not be a CSV metadata object response. For safety, do nothing.
 		// Note that empty "content" is acceptable, but the property must exist.
 		return $served;
-	}
-
-	if ( $request['format'] === 'json' ) {
-		$json = Datasets\csv_to_json( $csv_data['content'] );
-		// TODO: Is there a security implication here, or a proper way to escape this?
-		// phpcs:ignore
-		echo wp_json_encode( $json );
-		return true;
 	}
 
 	if ( ! headers_sent() ) {

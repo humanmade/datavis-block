@@ -1,70 +1,68 @@
 import apiFetch from '@wordpress/api-fetch';
-// import { dispatch } from '@wordpress/data';
+import { select } from '@wordpress/data';
 
 import asyncThrottle from './throttle';
 
-// const initializeDatasetEntities() {}
+/**
+ * Get the datasets route base for the active post being edited.
+ *
+ * @returns {string} Route string: /wp/v2/{type}/{id}/datasets/.
+ */
+const getPostDatasetsRoute = () => {
+	const postId = select( 'core/editor' ).getCurrentPostId();
+	const postType = select( 'core/editor' ).getCurrentPostType();
+	if ( ! postId || ! postType ) {
+		return '';
+	}
+
+	const postTypeObject = select( 'core' ).getEntity( 'postType', postType );
+	if ( ! postTypeObject ) {
+		return '';
+	}
+
+	return [ postTypeObject.baseURL, postId, 'datasets' ].join( '/' );
+};
 
 /**
- * Get a list of available datasets.
+ * Get a list of available datasets for the active post..
  *
- * @param {object} post Post for which to list datasets.
- * @returns {Promise<object[]>} Promise resolving to array of available datasets.
+ * @returns {Promise<Dataset[]>} Promise resolving to array of available datasets.
  */
-export const getDatasets = ( post ) => apiFetch( {
-	// TODO: Get the collection slug for the relevant post type by using the post object.
-	path: `/wp/v2/posts/${ post.id }/datasets`,
+export const getDatasets = () => apiFetch( {
+	path: getPostDatasetsRoute(),
 } );
 
 /**
- * Get a specific dataset.
+ * Query the current post for a specific dataset by dataset filename.
  *
- * @param {number} postId   Post on which to find this dataset.
  * @param {string} filename Filename of dataset to load.
- * @returns {Promise<object>} Promise resolving to dataset JSON object.
+ * @returns {Promise<Dataset>} Promise resolving to dataset JSON object.
  */
-export const getDataset = ( postId, filename ) => apiFetch( {
+export const getDataset = ( filename ) => apiFetch( {
 	// TODO: Get the collection slug for the relevant post type by using the post object.
-	path: `/wp/v2/posts/${ postId }/datasets/${ filename }?format=json`,
+	path: `${ getPostDatasetsRoute() }/${ filename }?format=json`,
 } );
 
 /**
- * Get the CSV content of a dataset as a JSON object.
+ * Query for any dataset by URL and return as JSON.
  *
  * @param {string} url URL of remove CSV dataset.
- * @returns {object[]} JSON array representation of the CSV.
+ * @returns {Promise<Dataset>} JSON representation of the dataset.
  */
-export const getCsvAsJson = ( url ) => window.fetch( url )
-	.then( ( result ) => result.text() )
-	.then( ( csv ) => {
-		const [ columns, ...rows ] = csv.split( '\n' ).map( ( row ) => row.split( /,\s*/ ) );
-		return rows.map( ( row ) => {
-			return row.reduce(
-				( memo, val, idx ) => {
-					const column = columns[ idx ];
-					return {
-						...memo,
-						[ column ]: val,
-					};
-				},
-				{}
-			);
-		} );
-	} );
+export const getDatasetByUrl = ( url ) => {
+	const requestUrl = new URL( url );
+	requestUrl.searchParams.set( 'format', 'json' );
+	return fetch( requestUrl ).then( ( result ) => result.json() );
+};
 
 /**
  * Create a dataset in the API.
  *
- * @param {object} dataset          Dataset object.
- * @param {string} dataset.filename Dataset filename.
- * @param {string} dataset.content  Dataset CSV contents as string.
- * @param {object} post             Post on which to create the dataset.
- * @param {string} post.type        Type of post object.
- * @returns {Promise<object>} Promise resolving to the created dataset object.
+ * @param {Dataset} dataset Dataset object.
+ * @returns {Promise<Dataset>} Promise resolving to the created dataset object.
  */
-export const createDataset = ( { filename, content }, post ) => apiFetch( {
-	// TODO: Get the collection slug for the relevant post type by using the post object.
-	path: `/wp/v2/posts/${ post.id }/datasets`,
+export const createDataset = ( { filename, content = '' } ) => apiFetch( {
+	path: getPostDatasetsRoute(),
 	method: 'POST',
 	data: {
 		filename,
@@ -75,16 +73,12 @@ export const createDataset = ( { filename, content }, post ) => apiFetch( {
 /**
  * Update a dataset in the API.
  *
- * @param {object} dataset          Dataset object.
- * @param {string} dataset.filename Dataset filename.
- * @param {string} dataset.content  Dataset CSV contents as string.
- * @param {object} post             Post on which to create the dataset.
- * @param {string} post.type        Type of post object.
- * @returns {Promise<object>} Promise resolving to the created dataset object.
+ * @param {Dataset} dataset Dataset object.
+ * @returns {Promise<Dataset>} Promise resolving to the updated dataset object.
  */
-export const updateDataset = ( { filename, content }, post ) => apiFetch( {
+export const updateDataset = ( { filename, content } ) => apiFetch( {
 	// TODO: Get the collection slug for the relevant post type by using the post object.
-	path: `/wp/v2/posts/${ post.id }/datasets/${ filename }`,
+	path: `${ getPostDatasetsRoute() }/${ filename }`,
 	method: 'POST',
 	data: {
 		filename,
@@ -95,15 +89,12 @@ export const updateDataset = ( { filename, content }, post ) => apiFetch( {
 /**
  * Delete a dataset in the API.
  *
- * @param {object} dataset          Dataset object.
- * @param {string} dataset.filename Dataset filename.
- * @param {object} post             Post from which to delete the dataset.
- * @param {string} post.id          ID of post object.
+ * @param {Dataset} dataset Dataset object.
  * @returns {Promise<boolean>} Promise resolving to whether dataset got deleted.
  */
-export const deleteDataset = ( { filename }, post ) => apiFetch( {
+export const deleteDataset = ( { filename } ) => apiFetch( {
 	// TODO: Get the collection slug for the relevant post type by using the post object.
-	path: `/wp/v2/posts/${ post.id }/datasets/${ filename }`,
+	path: `${ getPostDatasetsRoute() }/${ filename }`,
 	method: 'DELETE',
 } );
 
@@ -117,3 +108,7 @@ export const deleteDataset = ( { filename }, post ) => apiFetch( {
 ].forEach( ( method ) => {
 	method.throttled = asyncThrottle( method, 200 );
 } );
+
+if ( module.hot ) {
+	module.hot.accept();
+}

@@ -46,16 +46,40 @@ function get_supported_post_types() : array {
 }
 
 /**
+ * Restrict the CSV filename.
+ *
+ * All filenames are lower-kebab-case and end in csv.
+ *
+ * @param string $filename Raw filename.
+ * @return string Sanitized filename.
+ */
+function sanitize_filename( string $filename ) : string {
+	$filename = preg_replace( '/(\.csv)?$/', '', trim( strtolower( $filename ) ) );
+	$filename = preg_replace( '/[^a-z0-9_]+/', '-', $filename );
+	$filename = preg_replace( '/(^-|-$)/', '', $filename );
+	$filename = "$filename.csv";
+	return $filename;
+}
+
+/**
  * Convert a CSV dataset to a JSON object.
  *
  * @todo Is there a more robust existing solution to this problem?
  *
- * @param string $csv String CSV content.
+ * @param string $csv       String CSV content.
+ * @param int    $row_limit Maximum number of rows to return.
  * @return array Array of field details.
  */
-function csv_to_json( string $csv ) : array {
+function csv_to_json( string $csv, ?int $row_limit = null ) : array {
 	/** @var array rows -- fix in-editor type hinting. */
-	$rows = array_map( 'str_getcsv', array_filter( explode( "\n", $csv ) ) );
+	$rows = array_map(
+		'str_getcsv',
+		array_slice(
+			array_filter( explode( "\n", $csv ) ),
+			0,
+			is_int( $row_limit ) ? $row_limit + 1 : null
+		)
+	);
 	$headers = $rows[0];
 	$data = array_slice( $rows, 1 );
 	return array_reduce(
@@ -71,4 +95,32 @@ function csv_to_json( string $csv ) : array {
 		},
 		[]
 	);
+}
+
+/**
+ * Roughly infer the field types of an array of JSON objects given its first row of data.
+ *
+ * @param array|string $data Data, as CSV string or JSON array.
+ * @return array
+ */
+function infer_field_types( $data ) : array {
+	if ( is_string( $data ) ) {
+		$data = csv_to_json( $data, 1 );
+	}
+
+	$fields = [];
+	foreach ( $data[0] ?? [] as $field => $value ) {
+		$field = [
+			'field' => $field,
+		];
+		// Roughly infer whether this is NOT a nominal field. (Nominal is the default.)
+		// See https://vega.github.io/vega-lite/docs/type.html for more details.
+		if ( is_numeric( $value ) || is_numeric( preg_replace( '/%$/', '', $value ) ) ) {
+			$field['type'] = 'quantitative';
+		} else if ( strtotime( $value ) !== false ) {
+			$field['type'] = 'temporal';
+		}
+		$fields[] = $field;
+	}
+	return $fields;
 }

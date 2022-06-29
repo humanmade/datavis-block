@@ -14,6 +14,7 @@ module.exports = {
 			'definedTags': [ 'jest-environment' ],
 		} ],
 		'jsdoc/require-jsdoc': 'warn',
+		'jsdoc/no-undefined-types': 'off',
 		'react/jsx-sort-props': 'off',
 	},
 };

@@ -80,6 +80,7 @@ function get_datasets( int $post_id ) : array {
 function get_dataset( int $post_id, string $filename ) : ?array {
 	$datasets = get_dataset_meta( $post_id );
 
+	$filename = Datasets\sanitize_filename( $filename );
 	if ( isset( $datasets[ $filename ] ) && is_string( $datasets[ $filename ] ) ) {
 		return [
 			'filename' => $filename,
@@ -101,7 +102,7 @@ function get_dataset( int $post_id, string $filename ) : ?array {
 function update_dataset( int $post_id, string $filename, string $content ) : bool {
 	$meta_value = get_dataset_meta( $post_id );
 
-	$filename = strtolower( $filename );
+	$filename = Datasets\sanitize_filename( $filename );
 	if ( isset( $meta_value[ $filename ] ) && trim( $meta_value[ $filename ] ) === trim( $content ) ) {
 		// No update needed.
 		return true;
@@ -130,6 +131,7 @@ function delete_dataset( int $post_id, string $filename ) : bool {
 		return false;
 	}
 
+	$filename = Datasets\sanitize_filename( $filename );
 	unset( $meta_value[ $filename ] );
 
 	if ( empty( $meta_value ) ) {
