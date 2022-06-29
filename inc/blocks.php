@@ -25,6 +25,15 @@ function register_blocks() : void {
 					'type'    => 'object',
 					'default' => [],
 				],
+				'maxWidth' => [
+						'type'    => 'string',
+				],
+				'minWidth' => [
+						'type'    => 'string',
+				],
+				'viewport' => [
+						'type'    => 'string',
+				],
 			],
 		]
 	);
