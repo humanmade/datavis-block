@@ -27,6 +27,13 @@ module.exports = choosePort( 9090 ).then( ( port ) => [
 	} ),
 	presets.development( {
 		name: 'datavis-block-frontend',
+		devServer: {
+			host: 'localhost',
+			client: {
+				overlay: false,
+			},
+			port,
+		},
 		externals: vegaExternals,
 		entry: {
 			'datavis-block-frontend': filePath( 'src/frontend.js' ),
