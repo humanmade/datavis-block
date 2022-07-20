@@ -23,7 +23,7 @@ const VegaChart = ( { spec } ) => {
 	}, [ container, id, spec ] );
 
 	return (
-		<div className={ 'vega-chart' } ref={ container }>
+		<div className="vega-chart" ref={ container }>
 			<div id={ id }></div>
 		</div>
 	);
