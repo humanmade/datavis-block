@@ -81,7 +81,7 @@ function register_dataset_routes() : void {
 				[
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => __NAMESPACE__ . '\\update_dataset_item',
-					'permission_callback' => '__return_true', // TODO: Only permit editing if can edit $post_id.
+					'permission_callback' => __NAMESPACE__ . '\\edit_post_datasets_permissions_check',
 					'args'                => get_dataset_schema(),
 				],
 			]
@@ -114,13 +114,13 @@ function register_dataset_routes() : void {
 				[
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => __NAMESPACE__ . '\\update_dataset_item',
-					'permission_callback' => '__return_true', // TODO: Only permit editing if can edit $post_id.
+					'permission_callback' => __NAMESPACE__ . '\\edit_post_datasets_permissions_check',
 					'args'                => get_dataset_schema(),
 				],
 				[
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => __NAMESPACE__ . '\\delete_dataset_item',
-					'permission_callback' => '__return_true', // TODO: Only permit deletion if can edit $post_id.
+					'permission_callback' => __NAMESPACE__ . '\\edit_post_datasets_permissions_check',
 				],
 			]
 		);
@@ -153,6 +153,36 @@ function get_post( $post_id ) {
 	}
 
 	return $post;
+}
+
+
+
+/**
+ * Checks if a given request has access to edit a post.
+ *
+ * We treat all dataset CRUD actions as a post edit, so ability to edit a post
+ * grants ability to create, update, and delete datasets on that post.
+ *
+ * @param WP_REST_Request $request Full details about the request.
+ * @return true|WP_Error True if the request has read access, WP_Error object otherwise.
+ */
+function edit_post_datasets_permissions_check( $request ) {
+	$post = get_post( $request['post_id'] );
+	if ( is_wp_error( $post ) ) {
+		return $post;
+	}
+
+	$post_type = $post ? get_post_type_object( $post->post_type ) : null;
+
+	if ( ( $post && ! current_user_can( 'edit_post', $post->ID ) ) || empty( $post_type->show_in_rest ?? null ) ) {
+		return new WP_Error(
+			'rest_cannot_edit',
+			__( 'Sorry, you are not allowed to edit this post.' ),
+			[ 'status' => rest_authorization_required_code() ]
+		);
+	}
+
+	return true;
 }
 
 /**

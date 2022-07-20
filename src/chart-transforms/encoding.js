@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 
-import { SelectControl, ToggleControl } from '@wordpress/components';
+import { SelectControl } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 

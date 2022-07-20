@@ -4,7 +4,7 @@
  * Description: Provide a block to render graphics using Vega Lite.
  * Author: Human Made
  * Author URI: https://humanmade.com
- * Version: 0.0.1
+ * Version: 0.1.0
  */
 
 namespace Datavis_Block;
