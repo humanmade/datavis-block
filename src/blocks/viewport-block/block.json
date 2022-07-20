@@ -1,0 +1,20 @@
+{
+	"apiVersion": 2,
+	"name": "datavis-block/viewport-block",
+	"title": "Data Visualization",
+	"textdomain": "datavis-block",
+	"category": "widgets",
+	"icon": "chart-line",
+	"attributes": {
+	  "blockId": {
+		"type": "string"
+	  },
+	  "currentViewport": {
+		"type": "string",
+		"default": "desktop"
+	  }
+	},
+  "providesContext": {
+	"datavis-block/currentViewport": "currentViewport"
+  }
+}

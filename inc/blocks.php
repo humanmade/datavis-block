@@ -25,6 +25,15 @@ function register_blocks() : void {
 					'type'    => 'object',
 					'default' => [],
 				],
+				'maxWidth' => [
+						'type'    => 'string',
+				],
+				'minWidth' => [
+						'type'    => 'string',
+				],
+				'viewport' => [
+						'type'    => 'string',
+				],
 			],
 		]
 	);
@@ -39,6 +48,9 @@ function register_blocks() : void {
  */
 function render_datavis_block( array $attributes ) : string {
 	$json     = $attributes['json'] ?? false;
+	$maxWidth = $attributes['maxWidth'] ?? false;
+	$minWidth = $attributes['minWidth'] ?? false;
+	$viewport = $attributes['viewport'] ?? false;
 	$chart_id = uniqid( 'chart-' );
 
 	// Do not continue if we do not have a json string.
@@ -49,10 +61,45 @@ function render_datavis_block( array $attributes ) : string {
 	$datavis = sprintf( '%1$s-datavis', $chart_id );
 	$config   = sprintf( '%1$s-config', $chart_id );
 
+	$classes = [
+		'datavis-block',
+		$datavis,
+	];
+	if ( $viewport ) {
+		$classes[] = sprintf( 'datavis-%1$s', $viewport );
+	}
+
 	ob_start();
 	?>
+	<style>
+		<?php if ( ! empty( $maxWidth ) || ! empty( $minWidth ) ) : ?>
+			.<?php echo esc_html( $datavis ) ?> {
+				display: none;
+			}
+		<?php endif; ?>
+
+		<?php if ( ! empty( $maxWidth ) && ! empty( $minWidth ) ) : ?>
+			@media screen and (max-width: <?php echo esc_attr( $maxWidth ); ?>px) and (min-width: <?php echo esc_attr( $minWidth ); ?>px) {
+				.<?php echo esc_html( $datavis ) ?> {
+					display: block;
+				}
+			}
+		<?php elseif ( ! empty( $maxWidth ) ) : ?>
+			@media screen and (max-width: <?php echo esc_attr( $maxWidth ); ?>px) {
+				.<?php echo esc_html( $datavis ) ?> {
+					display: block;
+				}
+			}
+		<?php elseif ( ! empty( $minWidth ) ) : ?>
+			@media screen and (min-width: <?php echo esc_attr( $minWidth ); ?>px) {
+				.<?php echo esc_html( $datavis ) ?> {
+					display: block;
+				}
+			}
+		<?php endif; ?>
+	</style>
 	<div
-		class="datavis-block"
+		class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
 		data-datavis="<?php echo esc_attr( $datavis ); ?>"
 		data-config="<?php echo esc_attr( $config ); ?>"
 	>

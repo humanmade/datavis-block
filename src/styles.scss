@@ -5,3 +5,8 @@
 	max-width: 100%; // Never overflow container.
 	height: auto !important; // Use object dimension props for aspect ratio when width-constrained.
 }
+
+.datavis-block {
+  margin: 0 auto;
+  text-align: center;
+}
